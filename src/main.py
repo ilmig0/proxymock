@@ -50,13 +50,13 @@ async def persist(
     response_code,
     response_body,
 ):
-    if "rule" in request_url or "ping" in request_url:
+    if "/rule" in request_url or "/ping" in request_url:
         return
 
     async with httpx.AsyncClient() as client:
         _ = await client.request(
             method="POST",
-            url=f"{PERSIST_SERVER_URL}/persist",
+            url=PERSIST_SERVER_URL + "/persist",
             content=json.dumps(
                 {
                     "request": {
@@ -73,17 +73,13 @@ async def persist(
         )
 
 
-# Пример middleware для логирования тела запроса и ответа
 @app.middleware("http")
 async def log_requests_and_responses(request: Request, call_next):
-    # Логирование тела запроса
     request_body = await request.body()
     request_body = request_body.decode()
     logger.info(f"Request: {request.method} {request.url} Body: {request_body}")
 
     response: Response = await call_next(request)
-
-    # Логирование тела ответа
     response_body = b""
     async for chunk in response.body_iterator:
         response_body += chunk
@@ -109,14 +105,14 @@ async def log_requests_and_responses(request: Request, call_next):
 
 @app.api_route("/ping", methods=["GET"])
 async def ping_handler(request: Request):
-    return "OK"
+    return {"status": "OK"}
 
 
 @app.api_route("/rule", methods=["POST"])
 async def rule_create_handler(request: Request):
     rule = await request.json()
     RULES.update({rule["path"]: rule["response"]})
-    return {"status": "ok"}
+    return {"status": "OK"}
 
 
 @app.api_route("/rule", methods=["DELETE"])
@@ -124,20 +120,16 @@ async def rule_delete_handler(request: Request):
     rule = await request.json()
     if rule["path"] in RULES:
         del RULES[rule["path"]]
-    return {"status": "ok"}
+    return {"status": "OK"}
 
 
 @app.api_route(
     "/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 )
 async def route_handler(request: Request, full_path: str):
-    logger.info(f"Fullpath: {full_path}")
-    logger.info(f"Rules: {RULES}")
-
     if full_path in RULES:
         return RULES[full_path]
     else:
-        # Проксируем запрос
         target_server = request.headers.get(TARGET_HOST_HEADER)
         target_url = f"{target_server}/{full_path}"
         return await proxy_request(request, target_url)

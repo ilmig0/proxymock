@@ -11,7 +11,7 @@
 ## How to run
  - Install packages:
 ```shell
-   pip install -r requirements.txt
+    pip install -r requirements.txt
 ```
  - Run tests: 
  ```shell
