@@ -1,12 +1,12 @@
-### Proxy mock server PoC
+# Proxy mock server PoC
  - Based on FastAPI
- - Requests proxying by default
- - Mocks responses by created path rule
- - Send traffic history to persisting server by `/persist` path
+ - Proxy server by default
+ - Mocks responses if need by rules
+ - Send traffic history into persistent server by `/persist` path
 
 ## Prerequisits
- - Server for persist traffic history (or mock ex. https://app.beeceptor.com rule for `/persist`)
- - Persist server base url setted to PERSIST_SERVER_URL env variable
+ - Available persistent server for history (or mock ex. https://app.beeceptor.com rule for `/persist`)
+ - The persistent server base url should be setted to PERSIST_SERVER_URL env variable
 
 ## How to run
  - Install packages:
