@@ -1,7 +1,7 @@
 import time
 
 
-async def test_default_proxy(
+async def test_should_proxying_by_default(
     api,
     mockserver,
     target_header,
@@ -12,8 +12,8 @@ async def test_default_proxy(
     def _foo(request):
         return non_mocked_response
 
-    @mockserver.json_handler("/log")
-    def _log(request):
+    @mockserver.json_handler("/persist")
+    def _persist(request):
         time.sleep(1)
         return "OK"
 
@@ -25,14 +25,14 @@ async def test_default_proxy(
     assert response.status == 200
     assert response.json() == non_mocked_response
 
-    log_call = await _log.wait_call()
-    assert log_call["request"].json == {
+    persist_call = await _persist.wait_call()
+    assert persist_call["request"].json == {
         "request": {"body": "", "method": "GET", "url": "/foo"},
         "response": {"body": non_mocked_response, "status_code": 200},
     }
 
 
-async def test_request_logging_should_be_in_background(
+async def test_request_persisting_should_be_in_background(
     api,
     mockserver,
     target_header,
@@ -43,8 +43,8 @@ async def test_request_logging_should_be_in_background(
     def _foo(request):
         return non_mocked_response
 
-    @mockserver.json_handler("/log")
-    def _log(request):
+    @mockserver.json_handler("/persist")
+    def _persist(request):
         time.sleep(1)
         return "OK"
 
@@ -57,9 +57,9 @@ async def test_request_logging_should_be_in_background(
     assert response.status == 200
     assert response.json() == non_mocked_response
 
-    assert _log.times_called == 0
-    log_call = await _log.wait_call()
-    assert log_call["request"].json == {
+    assert _persist.times_called == 0
+    persist_call = await _persist.wait_call()
+    assert persist_call["request"].json == {
         "request": {"body": "", "method": "GET", "url": "/foo"},
         "response": {"body": non_mocked_response, "status_code": 200},
     }

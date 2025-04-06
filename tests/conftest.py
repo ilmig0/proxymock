@@ -1,18 +1,17 @@
 import pytest
 
-import sys
-import pathlib
-
 import logging
+import pathlib
+import sys
+
+pytest_plugins = [
+    "testsuite.pytest_plugin",
+]
 
 logging.basicConfig(
     format="%(asctime)s:%(name)s:%(process)d:%(lineno)d " "%(levelname)s %(message)s"
 )
 logger = logging.getLogger("tests")
-
-pytest_plugins = [
-    "testsuite.pytest_plugin",
-]
 
 
 @pytest.fixture(scope="session")
@@ -38,7 +37,7 @@ async def service_scope(
     service_root,
     mockserver_info,
 ):
-    app_path = str(service_root.joinpath("src", "fastapi", "app.py"))
+    app_path = str(service_root.joinpath("src", "main.py"))
     async with create_daemon_scope(
         args=[
             sys.executable,
@@ -48,7 +47,7 @@ async def service_scope(
         ],
         ping_url=service_baseurl + "ping",
         env={
-            "SEND_LOG_URL": mockserver_info.base_url.rstrip("/"),
+            "PERSIST_SERVER_URL": mockserver_info.base_url.rstrip("/"),
         },
     ) as scope:
         yield scope

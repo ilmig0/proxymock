@@ -1,13 +1,16 @@
+import os
+import fire
+import httpx
+import json
+import logging
+
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, Response
 from starlette.background import BackgroundTask
-import httpx
-import fire
-import json
-import logging
-import os
 
-logging.basicConfig(format="%(asctime)s:%(name)s:%(process)d:%(lineno)d " "%(levelname)s %(message)s")
+logging.basicConfig(
+    format="%(asctime)s:%(name)s:%(process)d:%(lineno)d " "%(levelname)s %(message)s"
+)
 logger = logging.getLogger("app")
 
 app = FastAPI()
@@ -18,7 +21,7 @@ RULES = {
 
 TARGET_HOST_HEADER = "x-target-host"
 
-SEND_LOG_URL = os.getenv("SEND_LOG_URL")
+PERSIST_SERVER_URL = os.getenv("PERSIST_SERVER_URL")
 
 
 async def proxy_request(request: Request, target_url: str):
@@ -40,8 +43,12 @@ async def proxy_request(request: Request, target_url: str):
         )
 
 
-async def send_log(
-    request_url, request_method, request_headers, request_body, response_code, response_body
+async def persist(
+    request_url,
+    request_method,
+    request_body,
+    response_code,
+    response_body,
 ):
     if "rule" in request_url or "ping" in request_url:
         return
@@ -49,7 +56,7 @@ async def send_log(
     async with httpx.AsyncClient() as client:
         _ = await client.request(
             method="POST",
-            url=f"{SEND_LOG_URL}/log",
+            url=f"{PERSIST_SERVER_URL}/persist",
             content=json.dumps(
                 {
                     "request": {
@@ -90,10 +97,9 @@ async def log_requests_and_responses(request: Request, call_next):
         headers=dict(response.headers),
         media_type=response.media_type,
         background=BackgroundTask(
-            send_log,
+            persist,
             request_url=request.url.path,
             request_method=request.method,
-            request_headers=request.headers,
             request_body=request_body,
             response_code=response.status_code,
             response_body=response_body,
