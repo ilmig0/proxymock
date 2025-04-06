@@ -3,6 +3,13 @@ import pytest
 import sys
 import pathlib
 
+import logging
+
+logging.basicConfig(
+    format="%(asctime)s:%(name)s:%(process)d:%(lineno)d " "%(levelname)s %(message)s"
+)
+logger = logging.getLogger("tests")
+
 pytest_plugins = [
     "testsuite.pytest_plugin",
 ]
@@ -20,7 +27,6 @@ def service_baseurl(service_port):
 
 @pytest.fixture(scope="session")
 def service_root():
-    """Path to example service root."""
     return pathlib.Path(__file__).parent.parent
 
 
@@ -28,35 +34,35 @@ def service_root():
 async def service_scope(
     create_daemon_scope,
     service_baseurl,
+    service_port,
     service_root,
+    mockserver_info,
 ):
     app_path = str(service_root.joinpath("src", "fastapi", "app.py"))
-    print(sys.executable, app_path)
     async with create_daemon_scope(
         args=[
             sys.executable,
             app_path,
+            "--port",
+            str(service_port),
         ],
         ping_url=service_baseurl + "ping",
+        env={
+            "SEND_LOG_URL": mockserver_info.base_url.rstrip("/"),
+        },
     ) as scope:
         yield scope
 
 
-@pytest.fixture
-def handle_log(mockserver):
-    @mockserver.json_handler("/log")
-    def log_handler(request):
-        print("logged", request.json)
-        return {"msg": "hello"}
-
-    return log_handler
+@pytest.fixture(scope="session")
+def target_header(mockserver_info):
+    return {"x-target-host": mockserver_info.base_url.rstrip("/")}
 
 
 @pytest.fixture
 async def service(
     ensure_daemon_started,
     service_scope,
-    handle_log,
 ):
     await ensure_daemon_started(service_scope)
 
@@ -68,8 +74,3 @@ async def api(
     service,
 ):
     return create_service_client(service_baseurl)
-
-
-@pytest.fixture
-def target_header(mockserver):
-    return {"x-target-host": mockserver.base_url.rstrip("/")}

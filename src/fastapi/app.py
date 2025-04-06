@@ -7,13 +7,10 @@ import json
 import logging
 import os
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s:%(name)s:%(process)d:%(lineno)d " "%(levelname)s %(message)s")
+logger = logging.getLogger("app")
 
 app = FastAPI()
-
-# Пример правила
 
 RULES = {
     "proxy/session": {"status": "mocked"},
@@ -23,10 +20,9 @@ TARGET_HOST_HEADER = "x-target-host"
 
 SEND_LOG_URL = os.getenv("SEND_LOG_URL")
 
-# Прокси сервер
+
 async def proxy_request(request: Request, target_url: str):
     logger.info(f"Target url: {target_url}")
-    # time.sleep(60)
     async with httpx.AsyncClient() as client:
         response = await client.request(
             method=request.method,
@@ -45,9 +41,9 @@ async def proxy_request(request: Request, target_url: str):
 
 
 async def send_log(
-    request_url, request_method, request_body, response_code, response_body
+    request_url, request_method, request_headers, request_body, response_code, response_body
 ):
-    if "ping" in request_url:
+    if "rule" in request_url or "ping" in request_url:
         return
 
     async with httpx.AsyncClient() as client:
@@ -63,7 +59,7 @@ async def send_log(
                     },
                     "response": {
                         "status_code": response_code,
-                        "body": response_body,
+                        "body": json.loads(response_body),
                     },
                 }
             ),
@@ -97,6 +93,7 @@ async def log_requests_and_responses(request: Request, call_next):
             send_log,
             request_url=request.url.path,
             request_method=request.method,
+            request_headers=request.headers,
             request_body=request_body,
             response_code=response.status_code,
             response_body=response_body,
@@ -140,10 +137,10 @@ async def route_handler(request: Request, full_path: str):
         return await proxy_request(request, target_url)
 
 
-def serve():
+def serve(port):
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8088)
+    uvicorn.run(app, host="0.0.0.0", port=port)
 
 
 if __name__ == "__main__":
